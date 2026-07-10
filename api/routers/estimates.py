@@ -123,7 +123,7 @@ def list_estimates(db: Session = Depends(get_db)):
     rows = db.execute(text("""
         SELECT e.id, e.estimate_number, e.status, e.grand_total, e.created_at,
                c.first_name || ' ' || c.last_name AS customer_name,
-               v.year || ' ' || v.make || ' ' || v.model AS vehicle
+               v.year::text || ' ' || v.make || ' ' || v.model AS vehicle
         FROM estimates e
         LEFT JOIN customers c ON c.id = e.customer_id
         LEFT JOIN vehicles v ON v.id = e.vehicle_id
