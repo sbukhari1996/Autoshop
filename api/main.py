@@ -71,6 +71,19 @@ def health():
     return {"status": "ok", "service": "autoest-pro-api"}
 
 
+@app.get("/debug/routes")
+def list_routes():
+    routes = []
+    for route in app.routes:
+        if hasattr(route, "path"):
+            routes.append({
+                "path": route.path,
+                "name": getattr(route, "name", ""),
+                "methods": list(getattr(route, "methods", None) or []),
+            })
+    return routes
+
+
 @app.get("/api/insurance-companies")
 def get_insurance_companies():
     from database import SessionLocal
