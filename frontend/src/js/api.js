@@ -4,9 +4,9 @@
  * or http://localhost:8000/api/ for local dev.
  */
 
-const BASE = window.location.hostname === 'localhost' && window.location.port !== '80'
+const BASE = window.location.hostname === 'localhost'
   ? 'http://localhost:8000'
-  : '';
+  : 'https://autoshop-production-b0a7up.railway.app';
 
 async function request(method, path, body = null) {
   const opts = {
