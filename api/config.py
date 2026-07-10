@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings
+from pydantic import model_validator
 from functools import lru_cache
 
 
@@ -8,11 +9,12 @@ class Settings(BaseSettings):
     upload_dir: str = "/app/uploads"
     svg_dir: str = "/app/svgs"
 
-    def __init__(self, **data):
-        super().__init__(**data)
+    @model_validator(mode="after")
+    def fix_db_url(self):
         # Railway provides postgres:// but SQLAlchemy requires postgresql://
         if self.database_url.startswith("postgres://"):
-            object.__setattr__(self, "database_url", self.database_url.replace("postgres://", "postgresql://", 1))
+            self.database_url = self.database_url.replace("postgres://", "postgresql://", 1)
+        return self
 
     class Config:
         env_file = ".env"
