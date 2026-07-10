@@ -1,0 +1,130 @@
+name: AutoEst Pro CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      # ── 1. Checkout ───────────────────────────────────────────
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ── 2. Create .env from example ───────────────────────────
+      - name: Create .env file
+        run: cp env.example .env
+
+      # ── 3. Build all containers ───────────────────────────────
+      - name: Build Docker images
+        run: docker compose build --no-cache
+
+      # ── 4. Start db + api only (skip scraper/frontend for CI) ─
+      - name: Start services
+        run: |
+          docker compose up -d db api
+          echo "Waiting for PostgreSQL to be ready..."
+          sleep 15
+
+      # ── 5. Health check — API ─────────────────────────────────
+      - name: Health check API
+        run: |
+          for i in {1..10}; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/health || echo "000")
+            echo "Attempt $i: HTTP $STATUS"
+            if [ "$STATUS" = "200" ]; then
+              echo "API is up!"
+              break
+            fi
+            sleep 5
+          done
+          if [ "$STATUS" != "200" ]; then
+            echo "API failed to start"
+            docker compose logs api
+            exit 1
+          fi
+
+      # ── 6. Test API endpoints ─────────────────────────────────
+      - name: Test GET /api/customers/
+        run: |
+          curl -sf http://localhost:8000/api/customers/ \
+            -H "Content-Type: application/json" \
+            | python3 -c "import sys,json; data=json.load(sys.stdin); print('customers endpoint OK, got:', type(data).__name__)"
+
+      - name: Test GET /api/rate-profiles/
+        run: |
+          curl -sf http://localhost:8000/api/rate-profiles/ \
+            -H "Content-Type: application/json" \
+            | python3 -c "import sys,json; data=json.load(sys.stdin); print('rate-profiles OK, count:', len(data))"
+
+      - name: Test GET /api/insurance-companies
+        run: |
+          curl -sf http://localhost:8000/api/insurance-companies \
+            -H "Content-Type: application/json" \
+            | python3 -c "import sys,json; data=json.load(sys.stdin); assert len(data) >= 5, 'Expected seed data'; print('insurance companies OK, count:', len(data))"
+
+      - name: Test GET /api/labor-rates/defaults
+        run: |
+          curl -sf http://localhost:8000/api/labor-rates/defaults \
+            -H "Content-Type: application/json" \
+            | python3 -c "import sys,json; data=json.load(sys.stdin); assert 'default_profile' in data; print('labor rates OK')"
+
+      - name: Test POST /api/customers/
+        run: |
+          RESPONSE=$(curl -sf -X POST http://localhost:8000/api/customers/ \
+            -H "Content-Type: application/json" \
+            -d '{"first_name":"Test","last_name":"Customer","email":"test@example.com","phone1":"555-1234"}')
+          echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['id'] > 0; print('create customer OK, id:', d['id'])"
+
+      - name: Test POST /api/vehicles/
+        run: |
+          RESPONSE=$(curl -sf -X POST http://localhost:8000/api/vehicles/ \
+            -H "Content-Type: application/json" \
+            -d '{"vin":"7FARS6H86RE004605","year":2024,"make":"Honda","model":"CR-V Hybrid","trim":"Sport-L","body_type":"4 Door Utility","paint_type":"2 Stage","drive_type":"AWD"}')
+          echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['id'] > 0; print('create vehicle OK, id:', d['id'])"
+
+      - name: Test estimate math (estimate_calc.py)
+        run: |
+          docker compose exec -T api python3 -c "
+          from services.estimate_calc import calculate_estimate
+          lines = [
+            {'operation':'Replace','source':'OEM','is_taxable':True,'labor_included':False,
+             'body_labor_hrs':1.4,'paint_labor_hrs':2.5,'refinish_hrs':1.0,'clearcoat_hrs':1.0,
+             'underside_hrs':0,'part_price':383.33,'qty':1},
+            {'operation':'Replace','source':'OEM','is_taxable':True,'labor_included':False,
+             'body_labor_hrs':0.3,'paint_labor_hrs':0,'refinish_hrs':0,'clearcoat_hrs':0,
+             'underside_hrs':0,'part_price':400.77,'qty':1},
+          ]
+          profile = {'body_rate':48,'paint_rate':48,'paint_supply_rate':28,'tax_rate_pct':7,
+                     'lkq_markup_pct':25,'aftermarket_markup_pct':0,'reman_markup_pct':0}
+          result = calculate_estimate(lines, profile)
+          assert result['grand_total'] > 0, 'Grand total should be > 0'
+          assert result['tax_amount'] > 0, 'Tax should be > 0'
+          print('Estimate math OK — grand total:', result['grand_total'])
+          print('Body hrs:', result['total_body_labor_hrs'])
+          print('Paint hrs:', result['total_paint_labor_hrs'])
+          print('OEM parts:', result['total_parts_oem'])
+          "
+
+      # ── 7. Build frontend image ───────────────────────────────
+      - name: Build frontend image
+        run: docker compose build frontend
+
+      # ── 8. Print logs on failure ──────────────────────────────
+      - name: Show logs on failure
+        if: failure()
+        run: |
+          echo "=== DB logs ==="
+          docker compose logs db
+          echo "=== API logs ==="
+          docker compose logs api
+
+      # ── 9. Tear down ──────────────────────────────────────────
+      - name: Tear down
+        if: always()
+        run: docker compose down -v

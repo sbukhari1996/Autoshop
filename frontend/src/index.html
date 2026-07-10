@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AutoEst Pro</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* ── Brand Colors ── */
+    :root {
+      --blue:     #1a6bbf;
+      --blue-dk:  #1457a0;
+      --blue-lt:  #d6e8f7;
+      --gray-row: #f4f6f8;
+      --border:   #d1d5db;
+    }
+    body { font-family: Arial, Helvetica, sans-serif; font-size: 13px; background: #eef0f3; }
+
+    /* ── Top nav (tab bar) ── */
+    .top-tabs button {
+      padding: 5px 12px; border: 1px solid #aaa; background: #f0f0f0;
+      cursor: pointer; font-size: 12px; border-radius: 3px; margin: 0 1px;
+    }
+    .top-tabs button.active { background: var(--blue); color: #fff; border-color: var(--blue-dk); }
+    .top-tabs button:hover:not(.active) { background: #e0e0e0; }
+
+    /* ── Left sidebar ── */
+    .sidebar { width: 80px; min-height: calc(100vh - 90px); background: var(--blue); }
+    .sidebar a {
+      display: block; color: #fff; text-align: center; padding: 10px 4px;
+      font-size: 11px; border-bottom: 1px solid rgba(255,255,255,0.15);
+      cursor: pointer; text-decoration: none; line-height: 1.3;
+    }
+    .sidebar a:hover { background: var(--blue-dk); }
+    .sidebar a.active { background: var(--blue-dk); font-weight: bold; }
+
+    /* ── Section headers ── */
+    .section-num {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 22px; height: 22px; background: var(--blue); color: #fff;
+      border-radius: 50%; font-size: 12px; font-weight: bold; margin-right: 6px;
+    }
+    .section-label { font-size: 16px; font-weight: 600; color: #222; }
+
+    /* ── Form fields ── */
+    input[type=text], input[type=email], input[type=tel], input[type=date],
+    input[type=number], select, textarea {
+      border: 1px solid var(--border); border-radius: 2px; padding: 4px 6px;
+      width: 100%; font-size: 13px; background: #fff;
+    }
+    input:focus, select:focus, textarea:focus { outline: 1px solid var(--blue); }
+    label.req::after { content: " *"; color: red; }
+
+    /* ── Buttons ── */
+    .btn { padding: 5px 16px; border-radius: 3px; font-size: 12px; cursor: pointer; border: none; }
+    .btn-blue { background: var(--blue); color: #fff; }
+    .btn-blue:hover { background: var(--blue-dk); }
+    .btn-gray { background: #e0e0e0; color: #333; border: 1px solid #aaa; }
+    .btn-red  { background: #c0392b; color: #fff; }
+    .btn-red:hover { background: #a93226; }
+
+    /* ── Action bar (Replace / Repair / R&I …) ── */
+    .action-bar button {
+      padding: 4px 12px; border: 1px solid #aaa; background: #e8e8e8;
+      cursor: pointer; font-size: 12px; font-weight: 600;
+    }
+    .action-bar button.active { background: var(--blue); color: #fff; border-color: var(--blue-dk); }
+    .source-bar button {
+      padding: 3px 10px; border: 1px solid #aaa; background: #e8e8e8;
+      cursor: pointer; font-size: 12px;
+    }
+    .source-bar button.active { background: var(--blue); color: #fff; border-color: var(--blue-dk); }
+
+    /* ── Estimate line table ── */
+    #line-table { border-collapse: collapse; width: 100%; font-size: 12px; }
+    #line-table th {
+      background: #3a3a3a; color: #fff; padding: 5px 6px; text-align: left;
+      border: 1px solid #555; position: sticky; top: 0; z-index: 1;
+    }
+    #line-table td { padding: 4px 6px; border: 1px solid #ddd; vertical-align: top; }
+    #line-table tr:nth-child(even) td { background: var(--gray-row); }
+    #line-table tr.section-row td {
+      background: #3a3a3a; color: #fff; font-weight: bold; padding: 3px 6px;
+    }
+    #line-table tr:hover td { background: #ddeeff; }
+
+    /* ── SVG diagram panel ── */
+    #svg-panel { position: relative; overflow: auto; background: #fff; border: 1px solid #ccc; }
+    #svg-panel svg { max-width: 100%; height: auto; }
+    #svg-panel .part-hotspot {
+      fill: #1a6bbf; opacity: 0.85; cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    #svg-panel .part-hotspot:hover { opacity: 1; filter: drop-shadow(0 0 4px #fff); }
+
+    /* ── Totals panel ── */
+    .totals-table { border-collapse: collapse; width: 100%; font-size: 12px; }
+    .totals-table td { padding: 4px 8px; border: 1px solid #ddd; }
+    .totals-table .label-col { background: var(--gray-row); font-weight: 600; width: 40%; }
+    .totals-table .grand-row td { font-weight: bold; font-size: 14px; background: #e8f0fe; }
+
+    /* ── Tabs hide/show ── */
+    .tab-page { display: none; }
+    .tab-page.active { display: block; }
+
+    /* ── Header bar ── */
+    .header-bar { background: var(--blue); color: #fff; font-size: 11px; padding: 3px 10px; }
+    .header-bar a { color: #aad4ff; text-decoration: none; }
+
+    /* ── Page nav buttons ── */
+    .page-nav { display: flex; justify-content: space-between; margin-bottom: 10px; }
+    .page-nav .btn { min-width: 100px; }
+
+    /* ── Tooltips ── */
+    [title] { cursor: help; }
+
+    /* ── Split pane ── */
+    #add-parts-container {
+      display: grid;
+      grid-template-columns: 180px 1fr;
+      grid-template-rows: auto 1fr;
+      gap: 0;
+      height: calc(100vh - 130px);
+    }
+    #category-list {
+      grid-row: 1 / 3; overflow-y: auto; background: #fff;
+      border-right: 1px solid #ddd; font-size: 12px;
+    }
+    #category-list .cat-item {
+      padding: 5px 10px; cursor: pointer; border-bottom: 1px solid #eee;
+      display: flex; align-items: center;
+    }
+    #category-list .cat-item:hover { background: var(--blue-lt); }
+    #category-list .cat-item.active { background: var(--blue); color: #fff; }
+    #category-list .cat-item.has-children::before { content: "▶ "; font-size: 9px; margin-right: 4px; }
+    #diagram-area { overflow: auto; background: #f9f9f9; border-bottom: 1px solid #ddd; min-height: 300px; }
+    #lines-area { overflow-y: auto; background: #fff; }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════
+     HEADER
+════════════════════════════════════════════════════════════════ -->
+<div class="header-bar flex items-center justify-between px-3 py-1">
+  <div class="flex items-center gap-3">
+    <span class="text-white font-bold text-base tracking-wide">AutoEst Pro</span>
+    <span class="text-xs text-blue-200">Auto Collision Estimating</span>
+  </div>
+  <div id="estimate-header-info" class="text-xs text-center text-blue-100">
+    — No estimate open —
+  </div>
+  <div class="text-xs text-right">
+    <span id="shop-name">Master Craft Auto Repair &amp; Collision</span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     TOP TAB BAR
+════════════════════════════════════════════════════════════════ -->
+<div class="bg-white border-b border-gray-300 px-2 py-1 top-tabs flex flex-wrap gap-1">
+  <button onclick="showTab('customer')"        id="tab-customer"    class="active">Customer</button>
+  <button onclick="showTab('vehicle')"         id="tab-vehicle"            >Vehicle</button>
+  <button onclick="showTab('add-parts')"       id="tab-add-parts"          >Add Parts</button>
+  <button onclick="showTab('insurance')"       id="tab-insurance"          >Insurance</button>
+  <button onclick="showTab('images')"          id="tab-images"             >Images</button>
+  <button onclick="showTab('details')"         id="tab-details"            >Details/Supplement</button>
+  <button onclick="window.print()"                                          >Print</button>
+  <button onclick="exportPDF()"                                             >Export PDF</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     MAIN LAYOUT: sidebar + content
+════════════════════════════════════════════════════════════════ -->
+<div class="flex" style="min-height:calc(100vh - 90px)">
+
+  <!-- LEFT SIDEBAR -->
+  <div class="sidebar">
+    <a onclick="openNewEstimate()">New<br>Estimate</a>
+    <a onclick="openEstimateList()">Open<br>Estimate</a>
+    <a onclick="showTab('add-parts')" class="mt-4">Parts<br>Search</a>
+    <a href="#" onclick="alert('Reports coming soon')">Reports</a>
+    <a onclick="showTab('add-parts')">Frame<br>Data</a>
+    <a onclick="showRates()">Rates</a>
+  </div>
+
+  <!-- PAGE CONTENT -->
+  <div class="flex-1 p-3 overflow-auto">
+
+    <!-- ─── ESTIMATES LIST ─────────────────────────────────── -->
+    <div id="page-estimates-list" class="tab-page active">
+      <div class="flex justify-between items-center mb-3">
+        <h2 class="text-lg font-bold">Estimates</h2>
+        <button class="btn btn-blue" onclick="openNewEstimate()">+ New Estimate</button>
+      </div>
+      <table class="w-full text-xs border-collapse" id="est-list-table">
+        <thead>
+          <tr class="bg-gray-700 text-white">
+            <th class="p-2 border border-gray-600">#</th>
+            <th class="p-2 border border-gray-600">Customer</th>
+            <th class="p-2 border border-gray-600">Vehicle</th>
+            <th class="p-2 border border-gray-600">Status</th>
+            <th class="p-2 border border-gray-600">Total</th>
+            <th class="p-2 border border-gray-600">Date</th>
+            <th class="p-2 border border-gray-600">Action</th>
+          </tr>
+        </thead>
+        <tbody id="est-list-body">
+          <tr><td colspan="7" class="text-center p-4 text-gray-400">Loading estimates…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ─── CUSTOMER TAB ──────────────────────────────────── -->
+    <div id="page-customer" class="tab-page">
+      <div class="page-nav">
+        <button class="btn btn-gray" onclick="showPage('estimates-list')">&#8249;&#8249; Estimate List</button>
+        <button class="btn btn-blue" onclick="saveCustomer()">Save</button>
+        <button class="btn btn-gray" onclick="showTab('vehicle')">Vehicle &gt;&gt;</button>
+      </div>
+      <h2 class="text-xl font-bold text-center mb-4">Customer Information</h2>
+
+      <div class="grid grid-cols-2 gap-6">
+        <!-- Section 1: Customer -->
+        <div class="bg-white border border-gray-300 rounded p-4">
+          <div class="flex gap-2 mb-3">
+            <button class="btn btn-blue text-xs" onclick="showCustomerSearch()">Select Existing Customer</button>
+            <button class="btn btn-gray text-xs" onclick="clearCustomer()">New Blank Customer</button>
+          </div>
+          <div class="mb-1">
+            <span class="section-num">1</span><span class="section-label">Customer</span>
+          </div>
+          <div class="grid grid-cols-2 gap-3 mt-3">
+            <div>
+              <label class="req text-xs font-semibold">First Name</label>
+              <input type="text" id="c-first" />
+            </div>
+            <div>
+              <label class="req text-xs font-semibold">Last Name</label>
+              <input type="text" id="c-last" />
+            </div>
+            <div class="col-span-2">
+              <label class="text-xs font-semibold">Email</label>
+              <input type="email" id="c-email" />
+            </div>
+            <div class="col-span-2">
+              <label class="text-xs font-semibold">Secondary Email</label>
+              <input type="email" id="c-email2" />
+            </div>
+            <div>
+              <label class="req text-xs font-semibold">Phone 1</label>
+              <div class="flex gap-1">
+                <input type="tel" id="c-phone1" style="width:70%" />
+                <input type="text" id="c-phone1-ext" placeholder="Ext" style="width:28%" />
+              </div>
+            </div>
+            <div>
+              <label class="text-xs font-semibold">Phone 1 Type</label>
+              <select id="c-phone1-type">
+                <option value="">—</option>
+                <option>Mobile</option><option>Home</option><option>Work</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-xs font-semibold">Phone 2</label>
+              <input type="tel" id="c-phone2" />
+            </div>
+            <div>
+              <label class="text-xs font-semibold">Phone 2 Type</label>
+              <select id="c-phone2-type">
+                <option value="">—</option>
+                <option>Mobile</option><option>Home</option><option>Work</option>
+              </select>
+            </div>
+          </div>
+          <div class="mt-3">
+            <label class="text-xs font-semibold">Customer Notes (Internal)</label>
+            <textarea id="c-notes" rows="3"></textarea>
+          </div>
+        </div>
+
+        <!-- Section 2: Address -->
+        <div class="bg-white border border-gray-300 rounded p-4">
+          <div class="mb-1">
+            <span class="section-num">2</span><span class="section-label">Address</span>
+          </div>
+          <div class="grid gap-3 mt-3">
+            <div>
+              <label class="text-xs font-semibold">Address 1</label>
+              <input type="text" id="c-addr1" />
+            </div>
+            <div>
+              <label class="text-xs font-semibold">Address 2</label>
+              <input type="text" id="c-addr2" />
+            </div>
+            <div>
+              <label class="text-xs font-semibold">City</label>
+              <input type="text" id="c-city" />
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="text-xs font-semibold">State</label>
+                <input type="text" id="c-state" maxlength="2" style="text-transform:uppercase" />
+              </div>
+              <div>
+                <label class="req text-xs font-semibold">Zip</label>
+                <input type="text" id="c-zip" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Customer search modal -->
+      <div id="customer-search-modal" class="hidden fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center">
+        <div class="bg-white rounded shadow-lg w-2/3 max-h-96 flex flex-col">
+          <div class="p-3 border-b flex justify-between">
+            <span class="font-bold">Select Existing Customer</span>
+            <button onclick="document.getElementById('customer-search-modal').classList.add('hidden')">✕</button>
+          </div>
+          <div class="p-3">
+            <input type="text" id="cust-search-input" placeholder="Search by name, email, phone…"
+              oninput="searchCustomers(this.value)" class="w-full border p-2" />
+          </div>
+          <div class="overflow-y-auto flex-1 p-3">
+            <table class="w-full text-xs">
+              <thead><tr class="bg-gray-200"><th class="p-1">Name</th><th class="p-1">Phone</th><th class="p-1">Email</th><th></th></tr></thead>
+              <tbody id="cust-search-results"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── VEHICLE TAB ───────────────────────────────────── -->
+    <div id="page-vehicle" class="tab-page">
+      <div class="page-nav">
+        <button class="btn btn-gray" onclick="showTab('customer')">&#8249;&#8249; Customer</button>
+        <button class="btn btn-blue" onclick="saveVehicle()">Save</button>
+        <button class="btn btn-gray" onclick="showTab('add-parts')">Add Parts &gt;&gt;</button>
+      </div>
+      <h2 class="text-xl font-bold text-center mb-4">Vehicle Information</h2>
+
+      <div class="bg-white border border-gray-300 rounded p-4 mb-4">
+        <div class="grid grid-cols-2 gap-6">
+          <!-- VIN Decode -->
+          <div>
+            <label class="text-xs font-semibold">Lookup VIN from License</label>
+            <div class="flex gap-2 mt-1">
+              <input type="text" id="v-license" placeholder="License Plate" style="width:55%" />
+              <select id="v-license-state" style="width:43%">
+                <option value="">State</option>
+                <option>VA</option><option>NY</option><option>NJ</option><option>MD</option>
+                <option>PA</option><option>CT</option><option>FL</option><option>CA</option><option>TX</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label class="text-xs font-semibold">Vehicle ID Number (VIN)</label>
+            <div class="flex gap-2 mt-1">
+              <input type="text" id="v-vin" placeholder="Enter VIN" style="width:80%" maxlength="17"
+                     oninput="this.value=this.value.toUpperCase()" />
+              <button class="btn btn-blue text-xs" onclick="decodeVIN()">Decode</button>
+            </div>
+          </div>
+        </div>
+
+        <hr class="my-4" />
+        <div class="flex gap-2 mb-3">
+          <button class="btn btn-blue text-xs active" id="vin-db-btn">Database</button>
+          <button class="btn btn-gray text-xs">Manual</button>
+        </div>
+
+        <!-- Year / Make / Model -->
+        <div class="mb-1"><span class="section-num">1</span><span class="section-label">Year, Make, Model</span></div>
+        <div class="grid grid-cols-3 gap-3 mt-2">
+          <div>
+            <label class="req text-xs font-semibold">Year</label>
+            <select id="v-year"></select>
+          </div>
+          <div>
+            <label class="req text-xs font-semibold">Make</label>
+            <input type="text" id="v-make" list="makes-list" />
+            <datalist id="makes-list">
+              <option>Honda</option><option>Toyota</option><option>Ford</option>
+              <option>Chevrolet</option><option>BMW</option><option>Mercedes-Benz</option>
+              <option>Nissan</option><option>Hyundai</option><option>Kia</option>
+            </datalist>
+          </div>
+          <div>
+            <label class="req text-xs font-semibold">Model</label>
+            <input type="text" id="v-model" />
+          </div>
+          <div>
+            <label class="text-xs font-semibold">Trim</label>
+            <input type="text" id="v-trim" />
+          </div>
+          <div>
+            <label class="text-xs font-semibold">Body Type</label>
+            <select id="v-body-type">
+              <option>4 Door Utility</option><option>2 Door Coupe</option>
+              <option>4 Door Sedan</option><option>2 Door Convertible</option>
+              <option>Pickup</option><option>Van</option><option>Minivan</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-xs font-semibold">Paint Type</label>
+            <select id="v-paint-type">
+              <option>2 Stage</option><option>3 Stage</option><option>2 Tone</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-xs font-semibold">Drive Type</label>
+            <select id="v-drive">
+              <option>AWD</option><option>FWD</option><option>RWD</option><option>4WD</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-xs font-semibold">Engine</label>
+            <input type="text" id="v-engine" />
+          </div>
+          <div>
+            <label class="text-xs font-semibold">Transmission</label>
+            <input type="text" id="v-transmission" />
+          </div>
+          <div>
+            <label class="text-xs font-semibold">Primary Color Code</label>
+            <input type="text" id="v-color-code" placeholder="e.g. R569M" />
+          </div>
+          <div>
+            <label class="text-xs font-semibold">Primary Color Name</label>
+            <input type="text" id="v-color-name" placeholder="e.g. Radiant Red" />
+          </div>
+          <div>
+            <label class="text-xs font-semibold">Color Interior</label>
+            <input type="text" id="v-color-int" />
+          </div>
+        </div>
+
+        <!-- Vehicle Details -->
+        <div class="mt-4 mb-1"><span class="section-num">3</span><span class="section-label">Vehicle Details</span></div>
+        <div class="grid grid-cols-3 gap-3 mt-2">
+          <div>
+            <label class="text-xs font-semibold">License Plate</label>
+            <input type="text" id="v-plate" />
+          </div>
+          <div>
+            <label class="text-xs font-semibold">License State</label>
+            <input type="text" id="v-plate-state" maxlength="2" style="text-transform:uppercase" />
+          </div>
+          <div>
+            <label class="text-xs font-semibold">Mileage In</label>
+            <input type="number" id="v-mileage" value="0" />
+          </div>
+        </div>
+
+        <!-- Point of Impact -->
+        <div class="mt-4 mb-2"><span class="section-num">4</span><span class="section-label">Point of Impact</span></div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <div class="text-xs font-semibold mb-1">First Point of Impact</div>
+            <svg viewBox="0 0 300 160" class="w-full border border-gray-300 bg-gray-50" id="poi1-svg">
+              <!-- Simplified car silhouette top-view -->
+              <rect x="90" y="10" width="120" height="140" rx="15" fill="none" stroke="#999" stroke-width="2"/>
+              <rect x="95" y="15" width="110" height="50" rx="5" fill="#e8e8e8" stroke="#aaa"/>
+              <rect x="95" y="95" width="110" height="50" rx="5" fill="#e8e8e8" stroke="#aaa"/>
+              <!-- Clickable zones -->
+              <rect x="95" y="8" width="110" height="15" rx="3" fill="transparent" stroke="transparent" class="poi-zone" data-poi="Front" style="cursor:pointer"/>
+              <rect x="205" y="20" width="15" height="120" rx="3" fill="transparent" stroke="transparent" class="poi-zone" data-poi="Right Side"/>
+              <rect x="95" y="145" width="110" height="15" rx="3" fill="transparent" stroke="transparent" class="poi-zone" data-poi="Rear"/>
+              <rect x="80" y="20" width="15" height="120" rx="3" fill="transparent" stroke="transparent" class="poi-zone" data-poi="Left Side"/>
+              <text x="150" y="50" text-anchor="middle" font-size="10" fill="#666">Front</text>
+              <text x="150" y="130" text-anchor="middle" font-size="10" fill="#666">Rear</text>
+              <text x="220" y="82" font-size="9" fill="#666" transform="rotate(90,220,82)">Right</text>
+              <text x="80" y="82" font-size="9" fill="#666" transform="rotate(-90,80,82)">Left</text>
+              <!-- Highlight will be drawn here -->
+              <rect id="poi1-highlight" x="0" y="0" width="0" height="0" fill="#1a6bbf" opacity="0.5" rx="3"/>
+            </svg>
+            <select id="v-poi1" class="mt-1">
+              <option value="">--Select POI--</option>
+              <option>Front</option><option>Left Front</option><option>Right Front</option>
+              <option>Left Side</option><option>Right Side</option>
+              <option>Rear</option><option>Left Rear</option><option>Right Rear</option>
+              <option>Roof</option><option>Undercarriage</option>
+            </select>
+          </div>
+          <div>
+            <div class="text-xs font-semibold mb-1">Second Point of Impact</div>
+            <svg viewBox="0 0 300 160" class="w-full border border-gray-300 bg-gray-50" id="poi2-svg">
+              <rect x="90" y="10" width="120" height="140" rx="15" fill="none" stroke="#999" stroke-width="2"/>
+              <rect x="95" y="15" width="110" height="50" rx="5" fill="#e8e8e8" stroke="#aaa"/>
+              <rect x="95" y="95" width="110" height="50" rx="5" fill="#e8e8e8" stroke="#aaa"/>
+              <rect x="95" y="8" width="110" height="15" rx="3" fill="transparent" class="poi-zone" data-poi="Front" data-num="2" style="cursor:pointer"/>
+              <rect x="205" y="20" width="15" height="120" rx="3" fill="transparent" class="poi-zone" data-poi="Right Side" data-num="2"/>
+              <rect x="95" y="145" width="110" height="15" rx="3" fill="transparent" class="poi-zone" data-poi="Rear" data-num="2"/>
+              <rect x="80" y="20" width="15" height="120" rx="3" fill="transparent" class="poi-zone" data-poi="Left Side" data-num="2"/>
+              <text x="150" y="50" text-anchor="middle" font-size="10" fill="#666">Front</text>
+              <text x="150" y="130" text-anchor="middle" font-size="10" fill="#666">Rear</text>
+              <rect id="poi2-highlight" x="0" y="0" width="0" height="0" fill="#1a6bbf" opacity="0.5" rx="3"/>
+            </svg>
+            <select id="v-poi2" class="mt-1">
+              <option value="">--Select POI--</option>
+              <option>Front</option><option>Left Front</option><option>Right Front</option>
+              <option>Left Side</option><option>Right Side</option>
+              <option>Rear</option><option>Left Rear</option><option>Right Rear</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── ADD PARTS TAB (Split-pane) ───────────────────── -->
+    <div id="page-add-parts" class="tab-page">
+      <!-- Action / Source bar -->
+      <div class="bg-white border border-gray-300 rounded p-2 mb-1 flex flex-wrap items-center gap-3">
+        <div class="action-bar flex gap-1">
+          <span class="text-xs font-semibold mr-1">Action:</span>
+          <button onclick="setAction('Replace')"  id="act-Replace"  class="active">Replace</button>
+          <button onclick="setAction('Repair')"   id="act-Repair">Repair</button>
+          <button onclick="setAction('R&I')"      id="act-RI">R&amp;I</button>
+          <button onclick="setAction('Refinish')" id="act-Refinish">Refinish</button>
+          <button onclick="setAction('Blend')"    id="act-Blend">Blend</button>
+        </div>
+        <div class="source-bar flex gap-1">
+          <span class="text-xs font-semibold mr-1">Part Source:</span>
+          <button onclick="setSource('OEM')"   id="src-OEM"   class="active">OEM</button>
+          <button onclick="setSource('After')" id="src-After">After.</button>
+          <button onclick="setSource('LKQ')"   id="src-LKQ">LKQ</button>
+          <button onclick="setSource('Reman')" id="src-Reman">Reman.</button>
+        </div>
+        <div class="ml-auto flex gap-2">
+          <button class="btn btn-blue text-xs" onclick="addManualLine()">+ Add Manual</button>
+          <button class="btn btn-blue text-xs" onclick="exportPDF()">Export PDF</button>
+        </div>
+      </div>
+
+      <!-- Parts search bar -->
+      <div class="bg-white border border-gray-300 rounded p-2 mb-1 flex gap-2">
+        <input type="text" id="parts-search-input" placeholder="Parts Search…"
+               class="border border-gray-300 rounded px-2 py-1 text-xs flex-1"
+               oninput="partsSearch(this.value)" />
+        <button class="btn btn-gray text-xs" onclick="partsSearch(document.getElementById('parts-search-input').value)">🔍</button>
+        <div id="parts-search-results" class="hidden absolute z-50 bg-white border shadow rounded text-xs max-h-48 overflow-y-auto w-72"></div>
+      </div>
+
+      <div id="add-parts-container">
+        <!-- LEFT: Category list -->
+        <div id="category-list"></div>
+
+        <!-- RIGHT TOP: Diagram area -->
+        <div id="diagram-area" class="p-2">
+          <div id="svg-panel" class="w-full h-full flex items-center justify-center text-gray-400">
+            <div class="text-center">
+              <div class="text-4xl mb-2">🔧</div>
+              <div class="text-sm">Select a category to view the parts diagram</div>
+              <div class="text-xs mt-1">Then click a numbered callout to add it to the estimate</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT BOTTOM: Lines table + totals -->
+        <div id="lines-area" style="grid-column:2">
+          <!-- Tabs -->
+          <div class="flex gap-1 p-2 bg-gray-100 border-t border-b">
+            <button class="btn btn-blue text-xs active" id="lt-parts">Parts &amp; Labor</button>
+            <button class="btn btn-gray text-xs" id="lt-mitchell">Mitchell P Pages</button>
+            <button class="btn btn-gray text-xs" id="lt-pdr">PDR</button>
+            <div class="ml-auto flex items-center gap-2">
+              <label class="text-xs flex items-center gap-1">
+                <input type="checkbox" id="show-all-years" /> Show all years
+              </label>
+            </div>
+          </div>
+
+          <!-- Line items table -->
+          <div class="overflow-x-auto" style="max-height:250px">
+            <table id="line-table">
+              <thead>
+                <tr>
+                  <th style="width:30px">#</th>
+                  <th>Section</th>
+                  <th style="width:80px">Action</th>
+                  <th>Part Name / Description</th>
+                  <th style="width:110px">Part Number</th>
+                  <th style="width:80px">Part Price</th>
+                  <th style="width:40px">Qty</th>
+                  <th style="width:50px">Source</th>
+                  <th style="width:30px">OH</th>
+                  <th style="width:130px">Labor</th>
+                  <th style="width:60px">Del</th>
+                </tr>
+              </thead>
+              <tbody id="line-tbody"></tbody>
+            </table>
+          </div>
+
+          <!-- Totals panel -->
+          <div class="p-3 bg-gray-50 border-t" id="totals-panel">
+            <div class="grid grid-cols-2 gap-4">
+              <table class="totals-table">
+                <thead>
+                  <tr class="bg-gray-700 text-white text-xs">
+                    <th class="p-1">Type</th><th class="p-1">Labor Time</th>
+                    <th class="p-1">Cost</th><th class="p-1">Total</th><th class="p-1">Taxable</th>
+                  </tr>
+                </thead>
+                <tbody id="totals-tbody">
+                  <tr><td class="label-col">Body Labor</td><td id="t-body-hrs">0.0</td><td id="t-body-rate">$48.00</td><td id="t-body-cost">$0.00</td><td></td></tr>
+                  <tr><td class="label-col">Paint Labor</td><td id="t-paint-hrs">0.0</td><td id="t-paint-rate">$48.00</td><td id="t-paint-cost">$0.00</td><td></td></tr>
+                  <tr><td class="label-col">Paint Supplies</td><td id="t-supply-hrs">0.0</td><td id="t-supply-rate">$28.00</td><td id="t-supply-cost">$0.00</td><td>✓</td></tr>
+                  <tr><td class="label-col">Nontaxed</td><td></td><td></td><td id="t-nontaxed">$0.00</td><td></td></tr>
+                  <tr><td class="label-col">Taxed</td><td></td><td></td><td id="t-taxed">$0.00</td><td>✓</td></tr>
+                  <tr><td class="label-col">OEM Parts</td><td></td><td></td><td id="t-oem">$0.00</td><td>✓</td></tr>
+                  <tr><td class="label-col">Other Parts</td><td></td><td></td><td id="t-other">$0.00</td><td>✓</td></tr>
+                </tbody>
+              </table>
+              <table class="totals-table">
+                <tbody>
+                  <tr><td class="label-col text-right">Taxable Amount</td><td id="t-taxable">$0.00</td></tr>
+                  <tr><td class="label-col text-right">Tax <span id="t-tax-pct">7</span>%</td><td id="t-tax">$0.00</td></tr>
+                  <tr><td class="label-col text-right">Non-taxable Amount</td><td id="t-nontaxable">$0.00</td></tr>
+                  <tr class="grand-row"><td class="label-col text-right">Grand Total</td><td id="t-grand">$0.00</td></tr>
+                  <tr><td class="label-col text-right">Less Deductible</td><td id="t-deductible">($0.00)</td></tr>
+                  <tr class="grand-row"><td class="label-col text-right">Net Total Due</td><td id="t-netdue">$0.00</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── INSURANCE TAB ─────────────────────────────────── -->
+    <div id="page-insurance" class="tab-page">
+      <div class="page-nav">
+        <button class="btn btn-gray" onclick="showTab('add-parts')">&#8249;&#8249; Add Parts</button>
+        <button class="btn btn-blue" onclick="saveInsurance()">Save</button>
+        <button class="btn btn-gray" onclick="showTab('images')">Add Images &gt;&gt;</button>
+      </div>
+      <h2 class="text-xl font-bold text-center mb-4">Insurance Information</h2>
+      <div class="bg-white border rounded p-4 space-y-6">
+        <div>
+          <div class="mb-2"><span class="section-num">1</span><span class="section-label">Insurance Information</span></div>
+          <div class="grid grid-cols-3 gap-3">
+            <div><label class="text-xs font-semibold">Policy Number</label><input type="text" id="ins-policy" /></div>
+            <div><label class="text-xs font-semibold">Claim Number</label><input type="text" id="ins-claim" /></div>
+            <div>
+              <label class="text-xs font-semibold">Coverage Type</label>
+              <select id="ins-coverage">
+                <option>Comprehensive</option><option>Collision</option><option>Liability</option><option>Uninsured Motorist</option>
+              </select>
+            </div>
+            <div><label class="text-xs font-semibold">Deductible $</label><input type="number" id="ins-deductible" value="500" step="50" oninput="updateDeductible(this.value)" /></div>
+            <div><label class="text-xs font-semibold">Date of Loss</label><input type="date" id="ins-dol" /></div>
+          </div>
+        </div>
+        <div>
+          <div class="mb-2"><span class="section-num">2</span><span class="section-label">Insurance Company</span></div>
+          <div class="grid grid-cols-3 gap-3">
+            <div>
+              <label class="text-xs font-semibold">Insurance Company</label>
+              <select id="ins-company" class="col-span-2"></select>
+            </div>
+            <div><label class="text-xs font-semibold">Agent First Name</label><input type="text" id="ins-agent-first" /></div>
+            <div><label class="text-xs font-semibold">Agent Last Name</label><input type="text" id="ins-agent-last" /></div>
+            <div><label class="text-xs font-semibold">Agent Phone</label><input type="tel" id="ins-agent-phone" /></div>
+            <div><label class="text-xs font-semibold">Adjuster First Name</label><input type="text" id="ins-adj-first" /></div>
+            <div><label class="text-xs font-semibold">Adjuster Last Name</label><input type="text" id="ins-adj-last" /></div>
+            <div><label class="text-xs font-semibold">Adjuster Phone</label><input type="tel" id="ins-adj-phone" /></div>
+            <div><label class="text-xs font-semibold">Adjuster Email</label><input type="email" id="ins-adj-email" /></div>
+            <div><label class="text-xs font-semibold">Claim Rep First Name</label><input type="text" id="ins-rep-first" /></div>
+            <div><label class="text-xs font-semibold">Claim Rep Last Name</label><input type="text" id="ins-rep-last" /></div>
+          </div>
+        </div>
+        <div>
+          <div class="mb-2"><span class="section-num">3</span><span class="section-label">Claimant</span></div>
+          <label class="text-xs flex items-center gap-2">
+            <input type="checkbox" id="ins-claimant-same" checked /> Same As Owner
+          </label>
+        </div>
+        <div>
+          <div class="mb-2"><span class="section-num">4</span><span class="section-label">Insured</span></div>
+          <label class="text-xs flex items-center gap-2">
+            <input type="checkbox" id="ins-insured-same" checked /> Same As Owner
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── IMAGES TAB ────────────────────────────────────── -->
+    <div id="page-images" class="tab-page">
+      <div class="page-nav">
+        <button class="btn btn-gray" onclick="showTab('insurance')">&#8249;&#8249; Insurance</button>
+        <div></div>
+        <button class="btn btn-gray" onclick="showTab('details')">Details &gt;&gt;</button>
+      </div>
+      <h2 class="text-xl font-bold text-center mb-4">Damage Photos</h2>
+      <div id="img-dropzone" class="border-2 border-dashed border-gray-400 rounded p-8 text-center text-gray-500 mb-4 cursor-pointer"
+           ondragover="event.preventDefault()" ondrop="handleImageDrop(event)"
+           onclick="document.getElementById('img-file-input').click()">
+        ⬇ Choose file(s) or drag it here.
+        <input type="file" id="img-file-input" accept="image/*" multiple class="hidden" onchange="handleImageFiles(this.files)" />
+      </div>
+      <div id="img-gallery" class="grid grid-cols-4 gap-3"></div>
+    </div>
+
+    <!-- ─── DETAILS TAB ───────────────────────────────────── -->
+    <div id="page-details" class="tab-page">
+      <div class="page-nav">
+        <button class="btn btn-gray" onclick="showTab('images')">&#8249;&#8249; Images</button>
+        <button class="btn btn-blue" onclick="saveDetails()">Save</button>
+        <div></div>
+      </div>
+      <h2 class="text-xl font-bold text-center mb-4">Details / Supplements</h2>
+      <div class="grid grid-cols-2 gap-4">
+        <div class="bg-white border rounded p-4">
+          <div class="mb-2"><span class="section-num">1</span><span class="section-label">Estimate Info</span></div>
+          <div class="grid gap-3">
+            <div><label class="text-xs font-semibold">Select Estimator</label>
+              <select id="d-estimator"><option>Syed Bukhari</option></select>
+            </div>
+            <div><label class="text-xs font-semibold">Inspection Date</label>
+              <input type="date" id="d-inspect-date" />
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div><label class="text-xs font-semibold">Repair Days</label>
+                <input type="number" id="d-repair-days" value="0" min="0" />
+              </div>
+              <div><label class="text-xs font-semibold">Hours Per Day</label>
+                <select id="d-hrs-per-day">
+                  <option>5</option><option>6</option><option>7</option><option>8</option>
+                </select>
+              </div>
+            </div>
+            <div><label class="text-xs font-semibold">Repair Notes</label>
+              <textarea id="d-repair-notes" rows="3"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="bg-white border rounded p-4">
+          <div class="mb-2"><span class="section-num">2</span><span class="section-label">Job Status</span></div>
+          <div class="grid gap-3">
+            <div><label class="text-xs font-semibold">Change Status</label>
+              <select id="d-status"><option value="">— Select —</option>
+                <option>Open</option><option>In Progress</option><option>Completed</option><option>Closed</option>
+              </select>
+            </div>
+            <div><label class="text-xs font-semibold">Date</label>
+              <input type="date" id="d-status-date" />
+            </div>
+            <button class="btn btn-blue text-xs w-32" onclick="saveDetails()">Change Job Status</button>
+          </div>
+          <div class="mt-4">
+            <div class="mb-2"><span class="section-num">3</span><span class="section-label">Supplement</span></div>
+            <table class="text-xs border-collapse w-full">
+              <thead><tr class="bg-blue-700 text-white"><th class="p-2">Caption</th><th class="p-2">Total</th><th class="p-2">Lines</th></tr></thead>
+              <tbody id="supplements-tbody">
+                <tr><td class="p-2">Base</td><td id="supp-total" class="p-2">$0.00</td><td id="supp-lines" class="p-2">0</td></tr>
+              </tbody>
+            </table>
+            <button class="btn btn-blue text-xs mt-2" onclick="alert('Supplement creation coming soon')">Create Supplement</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /.flex-1 -->
+</div><!-- /.flex -->
+
+<!-- ─── MANUAL LINE MODAL ─────────────────────────────────── -->
+<div id="manual-line-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+  <div class="bg-white rounded shadow-xl p-5 w-2/3 max-w-2xl">
+    <div class="flex justify-between mb-3">
+      <span class="font-bold text-base">Add Line Item</span>
+      <button onclick="closeManualModal()" class="text-gray-500 hover:text-red-600">✕</button>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="text-xs font-semibold">Section</label>
+        <select id="ml-section"></select>
+      </div>
+      <div>
+        <label class="text-xs font-semibold">Operation</label>
+        <select id="ml-operation">
+          <option>Replace</option><option>R&I</option><option>Repair</option>
+          <option>Refinish</option><option>Overhaul</option><option>Align</option>
+          <option>Blend</option><option>Other</option><option>None</option>
+        </select>
+      </div>
+      <div class="col-span-2">
+        <label class="text-xs font-semibold">Description</label>
+        <input type="text" id="ml-desc" />
+      </div>
+      <div>
+        <label class="text-xs font-semibold">Part Number</label>
+        <div class="flex gap-1">
+          <input type="text" id="ml-partnum" style="width:80%" />
+          <button class="btn btn-blue text-xs" onclick="lookupPartFromModal()">Lookup</button>
+        </div>
+      </div>
+      <div>
+        <label class="text-xs font-semibold">Part Price ($)</label>
+        <input type="number" id="ml-price" value="0" step="0.01" />
+      </div>
+      <div>
+        <label class="text-xs font-semibold">Qty</label>
+        <input type="number" id="ml-qty" value="1" min="1" />
+      </div>
+      <div>
+        <label class="text-xs font-semibold">Source</label>
+        <select id="ml-source">
+          <option>OEM</option><option>After</option><option>LKQ</option><option>Reman</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-xs font-semibold">Body Labor (hrs)</label>
+        <input type="number" id="ml-body-hrs" value="0" step="0.1" />
+      </div>
+      <div>
+        <label class="text-xs font-semibold">Paint Labor (hrs)</label>
+        <input type="number" id="ml-paint-hrs" value="0" step="0.1" />
+      </div>
+      <div>
+        <label class="text-xs font-semibold">Refinish (hrs)</label>
+        <input type="number" id="ml-refinish-hrs" value="0" step="0.1" />
+      </div>
+      <div>
+        <label class="text-xs font-semibold">Clearcoat (hrs)</label>
+        <input type="number" id="ml-cc-hrs" value="0" step="0.1" />
+      </div>
+      <div class="col-span-2 flex items-center gap-3">
+        <label class="text-xs flex items-center gap-1">
+          <input type="checkbox" id="ml-included" /> Labor Included
+        </label>
+        <label class="text-xs flex items-center gap-1">
+          <input type="checkbox" id="ml-taxable" checked /> Taxable
+        </label>
+        <label class="text-xs flex items-center gap-1">
+          <input type="checkbox" id="ml-oh" /> O/H Flag
+        </label>
+      </div>
+    </div>
+    <div class="flex justify-end gap-2 mt-4">
+      <button class="btn btn-gray" onclick="closeManualModal()">Cancel</button>
+      <button class="btn btn-blue" onclick="commitManualLine()">Add to Estimate</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast notification -->
+<div id="toast" class="hidden fixed bottom-4 right-4 bg-gray-800 text-white text-sm px-4 py-2 rounded shadow-lg z-50"></div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

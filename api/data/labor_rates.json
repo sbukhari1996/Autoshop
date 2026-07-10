@@ -1,0 +1,104 @@
+{
+  "_comment": "Static Mitchell-style default labor rates. Override per-estimate via Rate Profiles.",
+  "default_profile": {
+    "name": "Default Profile",
+    "labor": {
+      "body":         { "rate": 48.00, "unit": "hr" },
+      "paint":        { "rate": 48.00, "unit": "hr" },
+      "mechanical":   { "rate": 65.00, "unit": "hr" },
+      "frame":        { "rate": 55.00, "unit": "hr" },
+      "structure":    { "rate": 55.00, "unit": "hr" },
+      "electrical":   { "rate": 65.00, "unit": "hr" },
+      "aluminum":     { "rate": 48.00, "unit": "hr" },
+      "cleanup":      { "rate": 48.00, "unit": "hr" },
+      "other":        { "rate": 48.00, "unit": "hr" },
+      "glass":        { "rate": 48.00, "unit": "hr" }
+    },
+    "supplies": {
+      "body":         { "rate": 0.00,  "unit": "hr" },
+      "paint":        { "rate": 28.00, "unit": "hr" },
+      "clearcoat_cap": 3.5
+    },
+    "paint_finish": {
+      "overlap_adjacent_hrs":     0.4,
+      "overlap_non_adjacent_hrs": 0.2,
+      "allow_deductions":         true,
+      "stage_2_first_panel_pct":  40,
+      "stage_2_add_panel_pct":    20,
+      "stage_3_first_panel_pct":  70,
+      "stage_3_add_panel_pct":    40,
+      "two_tone_first_pct":       50,
+      "two_tone_add_pct":         30,
+      "blend_pct":                50,
+      "blend_3stage_pct":         70,
+      "underside_pct":            50,
+      "edging_threshold_hrs":     0.5,
+      "inner_panels_clearcoat":   true,
+      "inner_panels_two_tone":    true,
+      "edges_lock_pillars_cc":    true,
+      "undersides_interior_cc":   true
+    },
+    "parts": {
+      "retail":       { "taxable": true,  "markup_pct": 0   },
+      "lkq":          { "taxable": true,  "markup_pct": 25  },
+      "aftermarket":  { "taxable": true,  "markup_pct": 0   },
+      "reman":        { "taxable": true,  "markup_pct": 0   },
+      "other":        { "taxable": true,  "markup_pct": 0   }
+    },
+    "tax": {
+      "rate_pct": 7.0,
+      "taxable_items": ["paint_supplies", "oem_parts", "other_parts", "taxed_misc"]
+    }
+  },
+  "common_sections": [
+    "SPECIAL CAUTIONS", "PAINT CODE LOCATION", "CLEAR COAT IDENTIFICATION",
+    "INFORMATION LABELS", "FRONT BUMPER", "GRILLE",
+    "FRONT LAMPS", "COMBINATION LAMP", "HOOD", "COOLING",
+    "TRANS OIL COOLER", "A/C / HEATER / VENTILATION",
+    "FRONT FENDER", "UNDERHOOD DIMENSIONS", "FRONT INNER STRUCTURE",
+    "AIR BAG SYSTEM", "ABS/BRAKES", "WHEEL", "FRONT SUSPENSION",
+    "FRONT DRIVE AXLE", "FRONT STEERING LINKAGE/GEAR",
+    "STEERING WHEEL/COLUMN", "ENGINE/TRANS", "ENGINE/TRANS MOUNTS",
+    "ENGINE/BODY UNDER COVERS", "AIR CLEANER", "EXHAUST",
+    "ELECTRICAL", "WINDSHIELD", "COWL & DASH", "INSTRUMENT PANEL",
+    "CENTER CONSOLE", "ROCKER/PILLARS/FLOOR", "FRONT SEAT", "REAR SEAT",
+    "SEAT BELTS", "FRONT DOOR", "REAR DOOR", "ROOF", "SUNROOF",
+    "QUARTER PANEL", "QUARTER GLASS", "LIFTGATE", "REAR SUSPENSION",
+    "REAR DRIVE AXLE", "FUEL TANK", "REAR BODY", "REAR LAMPS",
+    "REAR BUMPER"
+  ],
+  "operations": [
+    "Replace", "R&I", "Repair", "Refinish", "Overhaul",
+    "Align", "Blend", "Other", "None"
+  ],
+  "part_sources": ["OEM", "After", "LKQ", "Reman"],
+  "accessories": [
+    "Air Bag Other", "Air Bag-Driver", "Air Bag-Passenger",
+    "Air Conditioning", "Air Dam", "Alarm System", "Alloy Wheels",
+    "AM Radio", "AM/FM Cass/CD", "AM/FM Radio", "AM/FM Tape",
+    "Anti-Lock Brakes", "Auto Lock Hubs", "Automatic Transmission",
+    "Bed Liner", "Bra", "Bucket Seats", "Camper Shell",
+    "Camper Special", "Canopy", "Captain Chairs (2)", "Captain Chairs (4)",
+    "Captain Chairs (6)", "Carriage Roof", "CB", "CD Changer",
+    "CD Player", "Center Console", "Chrome Bumper", "Chrome Step Bumper",
+    "Chrome Wheels", "Cloth/Velour Seats", "Covertable Top",
+    "Cruise Control", "Custom Paint", "Dash Mat", "Dual Air Conditioning",
+    "Dual Power Seats", "Dual Rear Wheels", "Equalizer", "Exterior Visor",
+    "Extra Tank", "Fog Lights", "Full Pop-Top", "Graphics", "Grill Guard",
+    "Ground Effect Package", "Half Pop-Top", "Hard Top", "Heated Mirrors",
+    "Heated Seats", "Hydraulic Liftgate", "Keyless Entry", "Leather Seats",
+    "Lift Kit", "Lighted Entry System", "Lowered (in)", "Luggage Racks",
+    "Manual Lock Hubs", "Microwave", "Navigation System",
+    "Overhead Console", "Phone", "Pop-Up Sunroof", "Power Antenna",
+    "Power Brakes", "Power Locks", "Power Mirrors", "Power Seat",
+    "Power Steering", "Power Windows", "Privacy Glass", "Rear Defroster",
+    "Rear Spoiler", "Rear Step Bumper", "Rear Tool Box", "Rear Wiper",
+    "Refrigerator", "Remote Starter", "Remote Trunk Release",
+    "Removable Radio Face", "Running Boards", "Side Rear Window",
+    "Sliding-Manual Sunroof", "Sliding-Power Sunroof", "Styled Steel Wheels",
+    "T-Top Glass", "T-Top Solid", "Tachometer", "Television",
+    "Tilt Steering Wheel", "Tinted AM", "Trailer Hitch",
+    "Trailer Tow Package", "Tube Bumper", "Two-Tone Paint", "Vinyl Seats",
+    "Vinyl Top", "Wide Tires", "Winch", "Wire Wheel Covers", "Wire Wheels"
+  ]
+}
