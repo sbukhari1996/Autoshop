@@ -15,7 +15,7 @@ def init_db():
     from database import engine
     from sqlalchemy import text
     # Read and execute the init SQL (idempotent — uses CREATE TABLE IF NOT EXISTS)
-    sql_path = os.path.join(os.path.dirname(__file__), "..", "db", "init", "01_schema.sql")
+    sql_path = os.path.join(os.path.dirname(__file__), "db", "schema.sql")
     if os.path.exists(sql_path):
         with open(sql_path) as f:
             sql = f.read()
