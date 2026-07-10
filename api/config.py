@@ -8,6 +8,12 @@ class Settings(BaseSettings):
     upload_dir: str = "/app/uploads"
     svg_dir: str = "/app/svgs"
 
+    def __init__(self, **data):
+        super().__init__(**data)
+        # Railway provides postgres:// but SQLAlchemy requires postgresql://
+        if self.database_url.startswith("postgres://"):
+            object.__setattr__(self, "database_url", self.database_url.replace("postgres://", "postgresql://", 1))
+
     class Config:
         env_file = ".env"
 

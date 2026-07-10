@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from contextlib import asynccontextmanager
 import os
 
 from config import get_settings
@@ -8,7 +9,36 @@ from routers import customers, vehicles, estimates, parts, rate_profiles
 
 settings = get_settings()
 
+
+def init_db():
+    """Create tables and seed data if not present (safe to run on every startup)."""
+    from database import engine
+    from sqlalchemy import text
+    # Read and execute the init SQL (idempotent — uses CREATE TABLE IF NOT EXISTS)
+    sql_path = os.path.join(os.path.dirname(__file__), "..", "db", "init", "01_schema.sql")
+    if os.path.exists(sql_path):
+        with open(sql_path) as f:
+            sql = f.read()
+        with engine.connect() as conn:
+            # Split on semicolons and run each statement separately
+            for stmt in sql.split(";"):
+                stmt = stmt.strip()
+                if stmt:
+                    try:
+                        conn.execute(text(stmt))
+                    except Exception:
+                        pass  # already exists, skip
+            conn.commit()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()
+    yield
+
+
 app = FastAPI(
+    lifespan=lifespan,
     title="AutoEst Pro API",
     description="Auto Collision Estimating Platform",
     version="1.0.0",
